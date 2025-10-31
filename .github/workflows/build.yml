@@ -1,0 +1,51 @@
+name: Build .deb Package
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install dpkg-dev build-essential python3-tk -y
+        pip install pyinstaller --break-system-packages
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed Calculadora.py
+        mkdir -p package/DEBIAN package/usr/local/bin package/usr/share/applications package/usr/share/icons
+        cp dist/Calculadora package/usr/local/bin/calculadora
+        echo "Package: calculadora-mgi
+Version: 1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Geison <geison@mgi.com>
+Description: Calculadora de Medidas MI Laser em Python" > package/DEBIAN/control
+        echo "[Desktop Entry]
+Name=Calculadora MI Laser
+Exec=/usr/local/bin/calculadora
+Icon=/usr/share/icons/calculadora.png
+Type=Application
+Categories=Utility;
+Terminal=false" > package/usr/share/applications/calculadora.desktop
+        dpkg-deb --build package
+
+    - name: Upload .deb file
+      uses: actions/upload-artifact@v4
+      with:
+        name: calculadora-mi-laser
+        path: package.deb
